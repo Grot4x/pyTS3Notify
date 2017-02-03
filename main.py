@@ -3,6 +3,7 @@ import re
 import requests
 import smtplib
 from email.mime.text import MIMEText
+from email import utils
 import logging
 
 logging.basicConfig(filename='error.log', level=logging.INFO)
@@ -34,6 +35,7 @@ def sendMail(message):
     msg['Subject'] = 'TS3 version'
     msg['From'] = USER
     msg['To'] = TARGET
+    msg['Date'] = utils.formatdate(localtime=True)
 
     server = smtplib.SMTP(host=HOST, port=PORT)
     # server.set_debuglevel(1)
