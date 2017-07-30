@@ -67,7 +67,6 @@ def main():
     try:
         configFile = open('config.json', 'r')
         config = json.load(configFile)
-        CONFIG['MAPURL'] = str(config['MAPURL'])
         CONFIG['CHANGELOG'] = str(config['CHANGELOG'])
         CONFIG['URL'] = str(config['URL'])
         CONFIG['MAIL']['HOST'] = str(config['HOST'])
