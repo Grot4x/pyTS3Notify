@@ -58,6 +58,7 @@ def sendMail(message):
 
 def main():
     global CONFIG
+    message = ""
     if len(sys.argv) > 1:
         if sys.argv[1] == "dev":
             # Developer mode
