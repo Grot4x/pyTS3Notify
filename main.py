@@ -31,13 +31,13 @@ class Ts3Notify():
 
     def get_local_version(self):
         """ parse and return the local server version """
-        pattern = re.compile("Server Release (\d+.\d+.\d+.\d+)")
+        pattern = re.compile("Server Release ((\d+\.)?(\d+\.)?(\*|\d+))")
         versions = ""
 
         with open(self.config['CHANGELOG'], 'r') as changelog:
             versions = re.findall(pattern, str(changelog.read()))
 
-        return str(versions[0])
+        return str(versions[0].group(1))
 
     def get_current_version(self):
         """ load the online json and load the current version """
@@ -98,7 +98,7 @@ def main():
     current_version = ts3_notify.get_current_version()
     if current_version != local_version:
         try:
-            ts3_notify.send_mail("Your Server has version: {}\n Available version is: {}\n".format(local_version, current_version))
+            ts3_notify.send_mail("Your Server has version: {}\nAvailable version is: {}\n".format(local_version, current_version))
         except smtplib.SMTPException as smtp_exception:
             print("Could not send an email: {}".format(smtp_exception), file=sys.stderr)
 
