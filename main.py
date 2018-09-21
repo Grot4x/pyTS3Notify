@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
+
+""" Checks if a new ts3 version is available """
+
 import re
-import requests
 import smtplib
 import json
 import sys
 from email.mime.text import MIMEText
 from email import utils
-import logging
+import requests
 
-logging.basicConfig(filename='error.log', level=logging.INFO)
 
+"""
 CONFIG = {}
 CONFIG['CHANGELOG'] = ''
 CONFIG['URL'] = 'https://www.teamspeak.com/versions/server.json'
@@ -19,99 +21,82 @@ CONFIG['MAIL']['PORT'] = ''
 CONFIG['MAIL']['USER'] = ''
 CONFIG['MAIL']['PASSWORD'] = ''
 CONFIG['MAIL']['TARGET'] = ''
+"""
 
+class Ts3Notify():
+    """docstring for Ts3Notify"""
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
 
-def lastMail():
-    return True
+    def get_local_version(self):
+        """ parse and return the local server version """
+        pattern = re.compile("Server Release (\d+.\d+.\d+.\d+)")
+        versions = ""
 
+        with open(self.config['CHANGELOG'], 'r') as changelog:
+            versions = re.findall(pattern, str(changelog.read()))
 
-def getLocalVersion():
-    pattern = re.compile("Server Release (\d+.\d+.\d+.\d+)")
-    with open(CONFIG['CHANGELOG'], 'r') as f:
-        versions = re.findall(pattern, str(f.read()))
         return str(versions[0])
 
+    def get_current_version(self):
+        """ load the online json and load the current version """
+        result = requests.get(self.config['URL'])
+        result_json = result.json()
+        # you might want to modify this
+        return str(result_json['linux']['x86_64']['version'])
 
-def getCurrentVersion():
-    r = requests.get(CONFIG['URL'])
-    json = r.json()
-    # you might want to modify this
-    return str(json['linux']['x86_64']['version'])
+    def send_mail(self, message):
+        """ send mail according to config"""
+        msg = MIMEText(message)
+        msg['Subject'] = '[TS3] Your TS3 Server needs an update'
+        msg['From'] = self.config['MAIL']['USER']
+        msg['To'] = self.config['MAIL']['TARGET']
+        msg['Date'] = utils.formatdate(localtime=True)
 
-
-def sendMail(message):
-    msg = MIMEText(message)
-    msg['Subject'] = '[TS3] Your TS3 Server needs an update'
-    msg['From'] = CONFIG['MAIL']['USER']
-    msg['To'] = CONFIG['MAIL']['TARGET']
-    msg['Date'] = utils.formatdate(localtime=True)
-
-    server = smtplib.SMTP(host=HOST, port=PORT)
-    # server.set_debuglevel(1)
-    server.starttls()
-    server.ehlo()
-    server.login(user=CONFIG['MAIL']['USER'],
-                 password=CONFIG['MAIL']['PASSWORD'])
-    server.sendmail(from_addr=CONFIG['MAIL']['USER'], to_addrs=CONFIG['MAIL']['TARGET'],
-                    msg=msg.as_string())
-
+        server = smtplib.SMTP(host=self.config['MAIL']['HOST'], port=self.config['MAIL']['PORT'])
+        # server.set_debuglevel(1)
+        server.starttls()
+        server.ehlo()
+        server.login(user=self.config['MAIL']['USER'],
+                     password=self.config['MAIL']['PASSWORD'])
+        server.sendmail(from_addr=self.config['MAIL']['USER'], to_addrs=self.config['MAIL']['TARGET'],
+                        msg=msg.as_string())
 
 def main():
-    global CONFIG
-    message = ""
-    if len(sys.argv) > 1:
-        if sys.argv[1] == "dev":
-            # Developer mode
-            f = open("config.json.example", 'w')
-            f.write(json.dumps(CONFIG, indent=4))
-            sys.exit()
+    """ load conifg file and create TS3 Notify object """
+    config = {}
     try:
-        configFile = open('config.json', 'r')
-        config = json.load(configFile)
-        CONFIG['CHANGELOG'] = str(config['CHANGELOG'])
-        CONFIG['URL'] = str(config['URL'])
-        CONFIG['MAIL']['HOST'] = str(config['MAIL']['HOST'])
-        CONFIG['MAIL']['PORT'] = str(config['MAIL']['PORT'])
-        CONFIG['MAIL']['USER'] = str(config['MAIL']['USER'])
-        CONFIG['MAIL']['PASSWORD'] = str(config['MAIL']['PASSWORD'])
-        CONFIG['MAIL']['TARGET'] = str(config['MAIL']['TARGET'])
-    except ValueError as e:
-        print("No config was found.")
-        sys.exit()
-    except KeyError as e:
-        print("Setting not found: " + str(e))
-        sys.exit()
-    except FileNotFoundError as e:
-        print("No config was found.")
-        sys.exit()
-        message = ""
+        json_config = None
 
-    try:
-        local = getLocalVersion()
-        current = getCurrentVersion()
-    except OSError as e:
-        message = "An error occurred while trying to read the local CHANGELOG file: %s" % e
-    except requests.RequestException as e:
-        message.join(
-            "An error occurred while trying to get the current version: %s" % e)
+        with open('config.json', 'r') as config_file:
+            json_config = json.load(config_file)
 
-    if message == "":
-        if local != current:
-            if mailSend(current):
-                message = "There is a new ts3 server version: %s, your version: %s" % (
-                    current, local)
-                try:
-                    sendMail(message)
-                except smtplib.SMTPException as e:
-                    logging.error("Could not send an email: %s" % e)
-        else:
-            logging.info("Same version, no mail")
-    else:
+        config['CHANGELOG'] = str(json_config['CHANGELOG'])
+        config['URL'] = str(json_config['URL'])
+        config['MAIL']['HOST'] = str(json_config['MAIL']['HOST'])
+        config['MAIL']['PORT'] = str(json_config['MAIL']['PORT'])
+        config['MAIL']['USER'] = str(json_config['MAIL']['USER'])
+        config['MAIL']['PASSWORD'] = str(json_config['MAIL']['PASSWORD'])
+        config['MAIL']['TARGET'] = str(json_config['MAIL']['TARGET'])
+
+    except ValueError:
+        print("No config was found.", file=sys.stderr)
+        sys.exit()
+    except KeyError as key_error:
+        print("Setting not found: {}".format(key_error), file=sys.stderr)
+        sys.exit()
+    except FileNotFoundError:
+        print("No config was found.", file=sys.stderr)
+        sys.exit()
+    ts3_notify = Ts3Notify(config)
+    local_version = ts3_notify.get_local_version()
+    current_version = ts3_notify.get_current_version()
+    if current_version != local_version:
         try:
-            sendMail(message)
-        except smtplib.SMTPException as e:
-            logging.error("Could not send an email: %s" % e)
-
+            ts3_notify.send_mail("Your Server has version: {}\n Available version is: {}\n".format(local_version, current_version))
+        except smtplib.SMTPException as smtp_exception:
+            print("Could not send an email: {}".format(smtp_exception), file=sys.stderr)
 
 if __name__ == '__main__':
     main()
