@@ -56,16 +56,19 @@ class Ts3Notify():
 
         server = smtplib.SMTP(host=self.config['MAIL']['HOST'], port=self.config['MAIL']['PORT'])
         # server.set_debuglevel(1)
-        server.starttls()
         server.ehlo()
-        server.login(user=self.config['MAIL']['USER'],
-                     password=self.config['MAIL']['PASSWORD'])
-        server.sendmail(from_addr=self.config['MAIL']['USER'], to_addrs=self.config['MAIL']['TARGET'],
-                        msg=msg.as_string())
+
+        server.starttls()
+
+        server.ehlo()
+
+        server.login(self.config['MAIL']['USER'], self.config['MAIL']['PASSWORD'])
+        server.sendmail(self.config['MAIL']['USER'], self.config['MAIL']['TARGET'], msg.as_string())
 
 def main():
     """ load conifg file and create TS3 Notify object """
     config = {}
+
     try:
         json_config = None
 
@@ -74,6 +77,7 @@ def main():
 
         config['CHANGELOG'] = str(json_config['CHANGELOG'])
         config['URL'] = str(json_config['URL'])
+        config['MAIL'] = {}
         config['MAIL']['HOST'] = str(json_config['MAIL']['HOST'])
         config['MAIL']['PORT'] = str(json_config['MAIL']['PORT'])
         config['MAIL']['USER'] = str(json_config['MAIL']['USER'])
