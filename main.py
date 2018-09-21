@@ -37,7 +37,7 @@ class Ts3Notify():
         with open(self.config['CHANGELOG'], 'r') as changelog:
             versions = re.findall(pattern, str(changelog.read()))
 
-        return str(versions[0].group(1))
+        return str(versions[0][0])
 
     def get_current_version(self):
         """ load the online json and load the current version """
