@@ -8,6 +8,7 @@ import json
 import sys
 from email.mime.text import MIMEText
 from email import utils
+import argparse
 import requests
 
 
@@ -22,6 +23,11 @@ CONFIG['MAIL']['USER'] = ''
 CONFIG['MAIL']['PASSWORD'] = ''
 CONFIG['MAIL']['TARGET'] = ''
 """
+PARSER = argparse.ArgumentParser()
+
+PARSER.add_argument("-c", help="-c config_file")
+ARGS = PARSER.parse_args()
+
 
 class Ts3Notify():
     """docstring for Ts3Notify"""
@@ -72,7 +78,7 @@ def main():
     try:
         json_config = None
 
-        with open('config.json', 'r') as config_file:
+        with open(ARGS.c, 'r') as config_file:
             json_config = json.load(config_file)
 
         config['CHANGELOG'] = str(json_config['CHANGELOG'])
