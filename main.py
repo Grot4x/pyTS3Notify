@@ -58,9 +58,8 @@ class Ts3Notify():
         except requests.exceptions.TooManyRedirects:
             print("Too many redirects. Please check the url.")
             sys.exit(1)
-        except requests.exceptions.RequestException as e:
-            print("Something went wrong {}".format(e))
-            print(e)
+        except requests.exceptions.RequestException as err:
+            print("Something went wrong {}".format(err))
             sys.exit(1)
         
     def get_local_version(self):
@@ -78,7 +77,7 @@ class Ts3Notify():
         return str(self.result_json['linux']['x86_64']['version'])
     def get_update_url(self):
         """ returns current version """
-        return str(self.result_json['linux']['x86_64']['version']['mirrors']['teamspeak.com'])
+        return str(self.result_json['linux']['x86_64']['mirrors']['teamspeak.com'])
     def get_checksum(self):
         """ returns current version """
         return str(self.result_json['linux']['x86_64']['checksum'])
