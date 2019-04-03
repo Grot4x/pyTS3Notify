@@ -23,6 +23,7 @@ CONFIG['MAIL']['USER'] = ''
 CONFIG['MAIL']['PASSWORD'] = ''
 CONFIG['MAIL']['TARGET'] = ''
 """
+
 PARSER = argparse.ArgumentParser()
 
 PARSER.add_argument("-c", help="-c config_file")
@@ -34,7 +35,34 @@ class Ts3Notify():
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.result_json = self.load_update_data()
 
+    def load_update_data(self, retries=0):
+        """ loads json from teamspeak.com and handles errors"""
+        try:
+            if retries < 5:
+                request = requests.get(self.config['URL'])
+                request.raise_for_status()
+            else:
+                print("Too many retries. {}".format(retries))
+                sys.exit(1)
+            return request.json()
+        except requests.exceptions.HTTPError as err:
+            print("HTTP Error. {}".format(err))
+            retries += 1
+            self.load_update_data(retries)
+        except requests.exceptions.Timeout:
+            print("Timeout.")
+            retries += 1
+            self.load_update_data(retries)
+        except requests.exceptions.TooManyRedirects:
+            print("Too many redirects. Please check the url.")
+            sys.exit(1)
+        except requests.exceptions.RequestException as e:
+            print("Something went wrong {}".format(e))
+            print(e)
+            sys.exit(1)
+        
     def get_local_version(self):
         """ parse and return the local server version """
         pattern = re.compile("Server Release ((\d+\.)?(\d+\.)?(\*|\d+))")
@@ -46,11 +74,14 @@ class Ts3Notify():
         return str(versions[0][0])
 
     def get_current_version(self):
-        """ load the online json and load the current version """
-        result = requests.get(self.config['URL'])
-        result_json = result.json()
-        # you might want to modify this
-        return str(result_json['linux']['x86_64']['version'])
+        """ returns current version """
+        return str(self.result_json['linux']['x86_64']['version'])
+    def get_update_url(self):
+        """ returns current version """
+        return str(self.result_json['linux']['x86_64']['version']['mirrors']['teamspeak.com'])
+    def get_checksum(self):
+        """ returns current version """
+        return str(self.result_json['linux']['x86_64']['checksum'])
 
     def send_mail(self, message):
         """ send mail according to config"""
@@ -102,9 +133,11 @@ def main():
     ts3_notify = Ts3Notify(config)
     local_version = ts3_notify.get_local_version()
     current_version = ts3_notify.get_current_version()
+    url = ts3_notify.get_update_url()
+    checksum = ts3_notify.get_checksum()
     if current_version != local_version:
         try:
-            ts3_notify.send_mail("Your Server has version: {}\nAvailable version is: {}\n".format(local_version, current_version))
+            ts3_notify.send_mail("Your Server has version: {}\nAvailable version is: {}\nURL: {}\nChecksum: {}".format(local_version, current_version, url, checksum))
         except smtplib.SMTPException as smtp_exception:
             print("Could not send an email: {}".format(smtp_exception), file=sys.stderr)
 
